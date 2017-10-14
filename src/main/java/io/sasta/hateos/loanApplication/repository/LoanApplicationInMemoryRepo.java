@@ -19,7 +19,7 @@ public class LoanApplicationInMemoryRepo implements LoanApplicationRepo {
 
   public LoanApplication findOne(String id) {
     for (LoanApplication loanApplication : this.loanApplications) {
-      if (loanApplication.getId().equals(id)) {
+      if (loanApplication.getLoanId().equals(id)) {
         return loanApplication;
       }
     }

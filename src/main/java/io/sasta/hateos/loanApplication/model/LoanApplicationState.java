@@ -4,6 +4,7 @@ package io.sasta.hateos.loanApplication.model;
  * Created by Dev on 14/10/2017.
  */
 public enum LoanApplicationState {
+  NEW,
   SEND_LOAN_APPLICATION_ID,
   SEND_APPLICATIONFORM,
   SEND_DRIVERS_LICENSE,

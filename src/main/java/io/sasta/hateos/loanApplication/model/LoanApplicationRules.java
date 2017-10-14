@@ -5,18 +5,18 @@ package io.sasta.hateos.loanApplication.model;
  */
 public class LoanApplicationRules {
 
-  public static LoanApplicationState getCurrentState(final LoanApplication loanApplication) {
-    LoanApplicationState state = LoanApplicationState.SEND_APPLICATIONFORM;
+  public static void recalculateLoanApplicationState(final LoanApplication loanApplication) {
+    LoanApplicationState state;
     if (loanApplication.getAmount() < 500) {
-      if (loanApplication.getEntities().contains(Document.APPLICATION_FORM)) {
+      if (loanApplication.getDocuments().containsKey(DocumentType.APPLICATION_FORM)) {
         state = LoanApplicationState.READ_TO_PROCESS;
       } else {
         state = LoanApplicationState.SEND_APPLICATIONFORM;
       }
     } else if (loanApplication.getAmount() < 5000) {
-      if (loanApplication.getEntities().contains(Document.APPLICATION_FORM)) {
-        if (loanApplication.getEntities().contains(Document.DRIVERS_LICENSE)) {
-          if (loanApplication.getEntities().contains(Document.UTILITY_BILL)) {
+      if (loanApplication.getDocuments().containsKey(DocumentType.APPLICATION_FORM)) {
+        if (loanApplication.getDocuments().containsKey(DocumentType.DRIVERS_LICENSE)) {
+          if (loanApplication.getDocuments().containsKey(DocumentType.UTILITY_BILL)) {
             state = LoanApplicationState.READ_TO_PROCESS;
           } else {
             state = LoanApplicationState.SEND_UTILITY_BILL;
@@ -28,10 +28,10 @@ public class LoanApplicationRules {
         state = LoanApplicationState.SEND_APPLICATIONFORM;
       }
     } else {
-      if (loanApplication.getEntities().contains(Document.APPLICATION_FORM)) {
-        if (loanApplication.getEntities().contains(Document.DRIVERS_LICENSE)) {
-          if (loanApplication.getEntities().contains(Document.UTILITY_BILL)) {
-            if (loanApplication.getEntities().contains(Document.PASSPORT)) {
+      if (loanApplication.getDocuments().containsKey(DocumentType.APPLICATION_FORM)) {
+        if (loanApplication.getDocuments().containsKey(DocumentType.DRIVERS_LICENSE)) {
+          if (loanApplication.getDocuments().containsKey(DocumentType.UTILITY_BILL)) {
+            if (loanApplication.getDocuments().containsKey(DocumentType.PASSPORT)) {
               state = LoanApplicationState.READ_TO_PROCESS;
             } else {
               state = LoanApplicationState.SEND_PASSPORT;
@@ -46,6 +46,6 @@ public class LoanApplicationRules {
         state = LoanApplicationState.SEND_APPLICATIONFORM;
       }
     }
-    return state;
+    loanApplication.setCurrentState(state);
   }
 }
