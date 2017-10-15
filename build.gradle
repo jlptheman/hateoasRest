@@ -16,7 +16,7 @@ dependencies {
     compile group: 'org.springframework.boot', name: 'spring-boot-starter-tomcat', version: '1.2.2.RELEASE'
 //    compile group: 'org.apache.tomcat.embed', name: 'tomcat-embed-jasper', version: '9.0.1'
 //    compile group: 'org.springframework.hateoas', name: 'spring-hateoas', version: '0.16.0.RELEASE'
-
+    compile 'org.springframework.statemachine:spring-statemachine-core:1.2.6.RELEASE'
 
     testCompile group: 'junit', name: 'junit', version: '4.12'
 

@@ -8,8 +8,8 @@ import io.sasta.hateos.loanApplication.model.ApplicationForm;
 import io.sasta.hateos.loanApplication.model.Document;
 import io.sasta.hateos.loanApplication.model.DriversLicense;
 import io.sasta.hateos.loanApplication.model.LoanApplication;
-import io.sasta.hateos.loanApplication.model.LoanApplicationRules;
-import io.sasta.hateos.loanApplication.model.LoanApplicationState;
+import io.sasta.hateos.loanApplication.model.LoanApplicationEvents;
+import io.sasta.hateos.loanApplication.model.LoanApplicationStates;
 import io.sasta.hateos.loanApplication.model.Passport;
 import io.sasta.hateos.loanApplication.model.UtilityBill;
 import io.sasta.hateos.loanApplication.repository.LoanApplicationRepo;
@@ -32,13 +32,14 @@ public class LoanApplicationController {
   public Response getNewLoanApplication() {
     LoanApplication loanApplication = new LoanApplication();
     loanApplication.setLoanId(UUID.randomUUID().toString());
+
     repository.insert(loanApplication);
 
-    loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));;
+    loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel("CURRENT_STATE"));
     loanApplication
         .add(linkTo(methodOn(LoanApplicationController.class).setApplicationFormByApplicationId(
             loanApplication.getLoanId(), ""))
-            .withRel(loanApplication.getCurrentState().toString()));
+            .withRel(loanApplication.getStateMachine().getState().getId().toString()));
 
     Response response = new Response("Done", loanApplication);
     return response;
@@ -49,7 +50,7 @@ public class LoanApplicationController {
     LoanApplication loanApplication = repository.findOne(id);
 
     loanApplication.removeLinks();
-    loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
+    loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel("CURRENT_STATE"));
     addLinkBasedOnState(loanApplication);
 
     Response response = new Response("Done", loanApplication);
@@ -58,102 +59,68 @@ public class LoanApplicationController {
 
   @RequestMapping(value = "v1/loan/applicationform/{id}", method = RequestMethod.POST)
   public Response setApplicationFormByApplicationId(@PathVariable String id, @RequestBody String data) {
-    ApplicationForm document = null;
-    Response response = null;
-    LoanApplication loanApplication = repository.findOne(id);
-    try {
-      document = ApplicationForm.parse(data);
-      loanApplication.getDocuments().put(document.getType(), document);
-      loanApplication.setAmount(document.getAmount());
-      LoanApplicationRules.recalculateLoanApplicationState(loanApplication);
-      loanApplication.removeLinks();
-      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
-      addLinkBasedOnState(loanApplication);
-      response = new Response("Done", loanApplication);
-    } catch (IOException e) {
-      e.printStackTrace();
-      response = new Response("Not Completed", loanApplication);
-    }
-    return response;
+    return processMessage(id, data, LoanApplicationEvents.APPLICATION_FORM_RECEIVED);
   }
 
   @RequestMapping(value = "v1/loan/driverslicense/{id}", method = RequestMethod.POST)
   public Response setDriversLicenseByApplicationId(@PathVariable String id, @RequestBody String data) {
-    Document document = null;
-    Response response = null;
-    LoanApplication loanApplication = repository.findOne(id);
-    try {
-      document = DriversLicense.parse(data);
-      loanApplication.getDocuments().put(document.getType(), document);
-      response = new Response("Done", null);
-    } catch (IOException e) {
-      e.printStackTrace();
-      response = new Response("Not Completed", loanApplication);
-    }
-    return response;
+    return processMessage(id, data, LoanApplicationEvents.DRIVERS_LICENSE_RECEIVED);
   }
 
   @RequestMapping(value = "v1/loan/utilitybill/{id}", method = RequestMethod.POST)
   public Response setUtilityByLoadApplicationId(@PathVariable String id, @RequestBody String data) {
-    Document document = null;
-    Response response = null;
-    LoanApplication loanApplication = repository.findOne(id);
-    try {
-      document = UtilityBill.parse(data);
-      loanApplication.getDocuments().put(document.getType(), document);
-      response = new Response("Done", null);
-    } catch (IOException e) {
-      e.printStackTrace();
-      response = new Response("Not Completed", loanApplication);
-    }
-    return response;
+    return processMessage(id, data, LoanApplicationEvents.UTILITY_BILL_RECEIVED);
   }
 
   @RequestMapping(value = "v1/loan/passport/{id}", method = RequestMethod.POST)
   public Response setPassportByApplicationId(@PathVariable String id, @RequestBody String data) {
-    Document document = null;
-    Response response = null;
-    LoanApplication loanApplication = repository.findOne(id);
-    try {
-      document = Passport.parse(data);
-      loanApplication.getDocuments().put(document.getType(), document);
-      response = new Response("Done", null);
-    } catch (IOException e) {
-      e.printStackTrace();
-      response = new Response("Not Completed", loanApplication);
-    }
-    return response;
+    return processMessage(id, data, LoanApplicationEvents.PASSPORT_RECEIVED);
   }
 
+  private Response processMessage(@PathVariable String id, @RequestBody String data, LoanApplicationEvents loanApplicationEvent) {
+    ApplicationForm document = null;
+    LoanApplication loanApplication = repository.findOne(id);
+    if(!loanApplication.getStateMachine().sendEvent(loanApplicationEvent)){
+      return new Response("Invalid Action", loanApplication);
+    }
+    try {
+      document = ApplicationForm.parse(data);
+      loanApplication.getDocuments().put(document.getType(), document);
+      loanApplication.setAmount(document.getAmount());
+      loanApplication.removeLinks();
+      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel("CURRENT_STATE"));
+      addLinkBasedOnState(loanApplication);
+      return new Response("Done", loanApplication);
+    } catch (IOException e) {
+      e.printStackTrace();
+      return new Response("Not Completed", loanApplication);
+    }
+  }
 
   private void addLinkBasedOnState(final LoanApplication loanApplication) {
-    if(loanApplication.getCurrentState() == LoanApplicationState.SEND_APPLICATIONFORM){
-      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
-      loanApplication
+    if(loanApplication.getStateMachine().getState().getId() == LoanApplicationStates.SEND_APPLICATION_FORM){
+     loanApplication
           .add(linkTo(methodOn(LoanApplicationController.class).setApplicationFormByApplicationId(
               loanApplication.getLoanId(), ""))
-              .withRel(loanApplication.getCurrentState().toString()));
+              .withRel(loanApplication.getStateMachine().getState().toString()));
     } else
-    if(loanApplication.getCurrentState() == LoanApplicationState.SEND_DRIVERS_LICENSE){
-      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
+    if(loanApplication.getStateMachine().getState().getId() == LoanApplicationStates.SEND_DRIVERS_LICENSE){
       loanApplication
           .add(linkTo(methodOn(LoanApplicationController.class).setDriversLicenseByApplicationId(
               loanApplication.getLoanId(), ""))
-              .withRel(loanApplication.getCurrentState().toString()));
+              .withRel(loanApplication.getStateMachine().getState().getId().toString()));
     } else
-    if(loanApplication.getCurrentState() == LoanApplicationState.SEND_UTILITY_BILL){
-      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
+    if(loanApplication.getStateMachine().getState().getId() == LoanApplicationStates.SEND_UTILITY_BILL){
       loanApplication
           .add(linkTo(methodOn(LoanApplicationController.class).setUtilityByLoadApplicationId(
               loanApplication.getLoanId(), ""))
-              .withRel(loanApplication.getCurrentState().toString()));
+              .withRel(loanApplication.getStateMachine().getState().getId().toString()));
     } else
-    if(loanApplication.getCurrentState() == LoanApplicationState.SEND_PASSPORT){
-      loanApplication.add(linkTo(methodOn(LoanApplicationController.class).getLoanApplicationByLoanApplicationId(loanApplication.getLoanId())).withRel(loanApplication.getCurrentState().toString()));
+    if(loanApplication.getStateMachine().getState().getId() == LoanApplicationStates.SEND_PASSPORT){
       loanApplication
           .add(linkTo(methodOn(LoanApplicationController.class).setPassportByApplicationId(
               loanApplication.getLoanId(), ""))
-              .withRel(loanApplication.getCurrentState().toString()));
+              .withRel(loanApplication.getStateMachine().getState().getId().toString()));
     }
   }
 
