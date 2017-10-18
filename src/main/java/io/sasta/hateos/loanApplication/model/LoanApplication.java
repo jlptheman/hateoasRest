@@ -3,24 +3,30 @@ package io.sasta.hateos.loanApplication.model;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.EnumSet;
 import java.util.HashMap;
-import lombok.Data;
-import org.springframework.hateoas.ResourceSupport;
+import java.util.UUID;
+import lombok.Getter;
+import lombok.Setter;
+import org.springframework.beans.factory.support.StaticListableBeanFactory;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.config.StateMachineBuilder;
 import org.springframework.statemachine.config.StateMachineBuilder.Builder;
 
-@Data
 @JsonIgnoreProperties("stateMachine")
-public class LoanApplication extends ResourceSupport {
+public class LoanApplication {
+  @Getter @Setter
   private String loanId;
   private long amount;
+  @Getter @Setter
   private HashMap<DocumentType, Document> documents = new HashMap<>();
+  @Getter @Setter
   private StateMachine<LoanApplicationStates, LoanApplicationEvents> stateMachine;
 
   public LoanApplication(){
+    loanId = UUID.randomUUID().toString();
     stateMachine = buildMachine();
     stateMachine.start();
   }
+
   @Override
   public boolean equals(Object object)
   {
@@ -39,26 +45,31 @@ public class LoanApplication extends ResourceSupport {
     Builder<LoanApplicationStates, LoanApplicationEvents> builder = StateMachineBuilder.builder();
 
     try{
-    builder.configureStates()
+      builder.configureConfiguration().withConfiguration().beanFactory(new StaticListableBeanFactory());
+      builder.configureStates()
         .withStates()
         .initial(LoanApplicationStates.SEND_APPLICATION_FORM)
         .states(EnumSet.allOf(LoanApplicationStates.class));
 
     builder.configureTransitions()
         .withExternal()
-        .source(LoanApplicationStates.SEND_APPLICATION_FORM).target(LoanApplicationStates.SEND_DRIVERS_LICENSE)
+        .source(LoanApplicationStates.SEND_APPLICATION_FORM)
+        .target(LoanApplicationStates.SEND_DRIVERS_LICENSE)
         .event(LoanApplicationEvents.APPLICATION_FORM_RECEIVED)
         .and()
         .withExternal()
-        .source(LoanApplicationStates.SEND_DRIVERS_LICENSE).target(LoanApplicationStates.SEND_UTILITY_BILL)
+        .source(LoanApplicationStates.SEND_DRIVERS_LICENSE)
+        .target(LoanApplicationStates.SEND_UTILITY_BILL)
         .event(LoanApplicationEvents.DRIVERS_LICENSE_RECEIVED)
         .and()
         .withExternal()
-        .source(LoanApplicationStates.SEND_UTILITY_BILL).target(LoanApplicationStates.SEND_PASSPORT)
+        .source(LoanApplicationStates.SEND_UTILITY_BILL)
+        .target(LoanApplicationStates.SEND_PASSPORT)
         .event(LoanApplicationEvents.UTILITY_BILL_RECEIVED)
         .and()
         .withExternal()
-        .source(LoanApplicationStates.SEND_PASSPORT).target(LoanApplicationStates.READY_TO_PROCESS)
+        .source(LoanApplicationStates.SEND_PASSPORT)
+        .target(LoanApplicationStates.READY_TO_PROCESS)
         .event(LoanApplicationEvents.PASSPORT_RECEIVED)
         .and()
         .withExternal()
