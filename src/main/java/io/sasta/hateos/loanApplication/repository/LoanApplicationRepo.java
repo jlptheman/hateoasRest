@@ -8,4 +8,6 @@ public interface LoanApplicationRepo {
   LoanApplication findOne(String id);
   void insert(LoanApplication loanApplication);
   void update(LoanApplication loanApplication);
+
+  void deleteOne(String id);
 }

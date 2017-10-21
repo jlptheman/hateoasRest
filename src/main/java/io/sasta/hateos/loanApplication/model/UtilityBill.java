@@ -23,6 +23,6 @@ public class UtilityBill extends Document  {
     HashMap<String,Object> map = mapper.readValue(data, HashMap.class);
     String description = map.get("description").toString();
     String name = map.get("name").toString();
-    return new UtilityBill(data, DocumentType.DRIVERS_LICENSE, description, name);
+    return new UtilityBill(data, DocumentType.UTILITY_BILL, description, name);
   }
 }

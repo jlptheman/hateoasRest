@@ -15,7 +15,6 @@ import org.springframework.statemachine.config.StateMachineBuilder.Builder;
 public class LoanApplication {
   @Getter @Setter
   private String loanId;
-  private long amount;
   @Getter @Setter
   private HashMap<DocumentType, Document> documents = new HashMap<>();
   @Getter @Setter

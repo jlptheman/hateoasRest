@@ -38,4 +38,10 @@ public class LoanApplicationInMemoryRepo implements LoanApplicationRepo {
       loanApplications.add(loanApplication);
     }
   }
+
+  @Override
+  public void deleteOne(String id) {
+    LoanApplication loanApplication = findOne(id);
+    loanApplications.remove(loanApplication);
+  }
 }

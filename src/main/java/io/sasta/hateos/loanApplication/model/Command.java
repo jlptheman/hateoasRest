@@ -8,7 +8,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @Data
 public class Command {
-  private String id;
+  private ClientActions id;
   private ActionTypes type;
   private RESTVerbs verb;
 }
